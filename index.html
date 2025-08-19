@@ -23,22 +23,26 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
   <script>
-    // Lấy tham số user từ URL
-    const params = new URLSearchParams(window.location.search);
-    const user = params.get("user") || "DEFAULT";
-
     // Secret phải trùng với Python
     const SECRET = "MY_SECRET_SALT";
+
+    // Sinh userID theo thông tin thiết bị (userAgent + kích thước màn hình)
+    const user = CryptoJS.MD5(
+      navigator.userAgent + screen.width + "x" + screen.height
+    ).toString().substring(0,8);  // rút gọn ID cho gọn
 
     // Sinh key theo ngày + user
     function makeKey() {
       const today = new Date().toISOString().slice(0,10);
-      return CryptoJS.MD5(today + SECRET + user).toString().substring(0,10).toUpperCase();
+      return CryptoJS.MD5(today + SECRET + user)
+               .toString()
+               .substring(0,10)
+               .toUpperCase();
     }
 
     const key = makeKey();
     document.getElementById("key").innerText = key;
-    document.getElementById("info").innerText = "User: " + user;
+    document.getElementById("info").innerText = "User ID: " + user;
 
     function copyKey(){
       navigator.clipboard.writeText(key).then(()=>{
