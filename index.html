@@ -1,37 +1,195 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Key Free Hôm Nay</title>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; margin-top: 100px; }
-    .key { font-size: 28px; font-weight: bold; color: green; margin: 20px 0; }
-    button { padding: 10px 20px; font-size: 16px; cursor: pointer; border-radius: 8px; }
+    :root {
+      --glass-bg: rgba(255,255,255,0.08);
+      --glass-border: rgba(255,255,255,0.18);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      color:#eaeff7;
+      overflow:hidden; /* để canvas mưa phủ full màn */
+      background:
+        radial-gradient(1200px 800px at 20% -10%, #2e335a 0%, #1c1b33 40%, #0e0e1a 100%);
+    }
+    /* Canvas mưa nằm dưới cùng */
+    #rain{position:fixed; inset:0; z-index:0; display:block;}
+
+    /* Lớp hạt nhiễu nhẹ cho đẹp nền */
+    .noise{
+      position:fixed; inset:0; z-index:1; pointer-events:none;
+      background-image:
+        radial-gradient(circle at 25% 25%, rgba(255,255,255,0.03) 0 2px, transparent 3px),
+        radial-gradient(circle at 75% 75%, rgba(255,255,255,0.02) 0 1px, transparent 2px);
+      background-size: 12px 12px, 10px 10px;
+      mix-blend-mode: overlay;
+    }
+
+    /* Khối nội dung nổi dạng glassmorphism */
+    .wrap{
+      position:relative; z-index:2;
+      min-height:100%;
+      display:flex; align-items:center; justify-content:center; padding:24px;
+    }
+    .card{
+      width:min(560px, 92vw);
+      padding:28px 22px;
+      backdrop-filter: blur(10px) saturate(140%);
+      -webkit-backdrop-filter: blur(10px) saturate(140%);
+      background: var(--glass-bg);
+      border:1px solid var(--glass-border);
+      border-radius:24px;
+      box-shadow:
+        0 20px 60px rgba(0,0,0,0.45),
+        inset 0 1px 0 rgba(255,255,255,0.08);
+      text-align:center;
+    }
+    h1{margin:0 0 8px;font-weight:700;letter-spacing:.3px}
+    .sub{opacity:.8;margin:0 0 18px;font-size:14px}
+    .key{
+      font-size:28px; font-weight:800; letter-spacing:1.2px;
+      color:#8ef0ff; margin:16px 0 18px;
+      text-shadow:0 0 18px rgba(142,240,255,.35);
+      user-select:all;
+    }
+    .row{display:flex; gap:10px; justify-content:center; flex-wrap:wrap}
+    button{
+      padding:12px 18px; border:0; border-radius:12px; cursor:pointer;
+      font-size:16px; font-weight:600;
+      background:#79d2ff; color:#0b1220;
+      box-shadow:0 10px 24px rgba(121,210,255,.25);
+      transition:transform .08s ease, filter .2s ease;
+    }
+    button:active{transform:translateY(1px)}
+    a.btn{
+      display:inline-flex; align-items:center; gap:8px; text-decoration:none;
+      padding:12px 18px; border-radius:12px; font-weight:600;
+      background:transparent; color:#b9d8ff; border:1px solid rgba(185,216,255,.25);
+      backdrop-filter: blur(8px);
+    }
+    .hint{margin-top:14px; font-size:12px; opacity:.8}
+    .footer{margin-top:18px; font-size:11px; opacity:.55}
+
+    /* Đường mưa highlight nhẹ phía trước thẻ */
+    .sheen{
+      position:absolute; inset:-1px; border-radius:24px; pointer-events:none; z-index:-1;
+      background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.06) 40%, transparent 55%);
+      mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+      animation: sweep 4s linear infinite;
+    }
+    @keyframes sweep{
+      0%{transform:translateX(-30%)}
+      100%{transform:translateX(130%)}
+    }
+
+    @media (max-width:420px){
+      .key{font-size:24px}
+      button, a.btn{width:100%; justify-content:center}
+    }
   </style>
 </head>
 <body>
-  <h2>🔑 Key Free Hôm Nay</h2>
-  <p class="key" id="dailyKey"></p>
-  <button onclick="copyKey()">📋 Copy Key</button>
+  <canvas id="rain"></canvas>
+  <div class="noise"></div>
 
-  <!-- Thư viện md5 -->
+  <div class="wrap">
+    <div class="card">
+      <div class="sheen"></div>
+      <h1>🔑 Key Free Hôm Nay</h1>
+      <p class="sub">Reset lúc 00:00 hàng ngày</p>
+
+      <div id="key" class="key">ĐANG TẠO…</div>
+
+      <div class="row">
+        <button id="copy">📋 Copy Key</button>
+        <a class="btn" href="https://link4m.com/aX4bHgdg" target="_blank" rel="noopener">Lấy key qua Link4m</a>
+      </div>
+
+      <div class="hint">Nhớ mở link Link4m để nhận key nếu bạn là người dùng Free.</div>
+      <div class="footer">© Cuongdz2828</div>
+    </div>
+  </div>
+
+  <!-- CryptoJS cho MD5 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+
   <script>
-    function taoKeyHangNgay() {
-      const today = new Date().toISOString().slice(0,10); // YYYY-MM-DD
-      const secret = "MY_SECRET_SALT"; // 🔑 nhớ trùng với code Python trong tool
-      const key = CryptoJS.MD5(today + secret).toString().substring(0,10).toUpperCase();
-      return key;
+    // ===== TẠO KEY THEO NGÀY (trùng với v8.py) =====
+    const SECRET = "MY_SECRET_SALT"; // nhớ trùng với code Python
+    function makeDailyKey(){
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth()+1).padStart(2,'0');
+      const dd = String(today.getDate()).padStart(2,'0');
+      const dateStr = `${yyyy}-${mm}-${dd}`;
+      return CryptoJS.MD5(dateStr + SECRET).toString().substring(0,10).toUpperCase();
     }
+    const key = makeDailyKey();
+    const keyEl = document.getElementById('key');
+    keyEl.textContent = key;
 
-    const key = taoKeyHangNgay();
-    document.getElementById("dailyKey").innerText = key;
-
-    function copyKey() {
-      navigator.clipboard.writeText(key).then(() => {
+    document.getElementById('copy').addEventListener('click', async () => {
+      try{
+        await navigator.clipboard.writeText(key);
+        keyEl.textContent = key + "  ✓";
+        setTimeout(()=> keyEl.textContent = key, 1200);
         alert("✅ Key đã copy: " + key);
-      });
-    }
+      }catch(e){
+        alert("Không copy được, hãy chạm giữ để chọn & sao chép.");
+      }
+    });
+
+    // ===== CANVAS MƯA (nhẹ, mượt, chạy tốt trên mobile) =====
+    (function rain(){
+      const c = document.getElementById('rain');
+      const ctx = c.getContext('2d');
+      let W, H, drops;
+
+      function resize(){
+        W = c.width = window.innerWidth;
+        H = c.height = window.innerHeight;
+        // tạo hạt mưa
+        const density = Math.floor((W*H)/16000); // mật độ vừa phải
+        drops = new Array(density).fill(0).map(()=> ({
+          x: Math.random()*W,
+          y: Math.random()*H,
+          l: 8 + Math.random()*18,   // chiều dài giọt
+          s: 1 + Math.random()*2.2,  // tốc độ rơi
+          w: 1 + Math.random()*1.2   // độ dày
+        }));
+      }
+      window.addEventListener('resize', resize, {passive:true});
+      resize();
+
+      function tick(){
+        ctx.clearRect(0,0,W,H);
+        ctx.save();
+        ctx.globalAlpha = 0.85;
+        ctx.strokeStyle = '#9ad9ff';
+        drops.forEach(d=>{
+          ctx.lineWidth = d.w;
+          ctx.beginPath();
+          ctx.moveTo(d.x, d.y);
+          ctx.lineTo(d.x + 0.5*d.w, d.y + d.l);
+          ctx.stroke();
+
+          d.x += 0.4;   // gió nhẹ
+          d.y += 4*d.s; // rơi
+          if(d.y > H + 20) { d.y = -20; d.x = Math.random()*W; }
+          if(d.x > W + 20) { d.x = -20; }
+        });
+        ctx.restore();
+        requestAnimationFrame(tick);
+      }
+      tick();
+    })();
   </script>
 </body>
-  </html>
+</html>
