@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Key Free Hôm Nay</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin-top: 100px; }
+    .key { font-size: 28px; font-weight: bold; color: green; margin: 20px 0; }
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <h2>🔑 Key Free Hôm Nay</h2>
+  <p class="key" id="dailyKey"></p>
+  <button onclick="copyKey()">📋 Copy Key</button>
+
+  <!-- Thư viện md5 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+  <script>
+    function taoKeyHangNgay() {
+      const today = new Date().toISOString().slice(0,10); // YYYY-MM-DD
+      const secret = "MY_SECRET_SALT"; // 🔑 nhớ trùng với code Python trong tool
+      const key = CryptoJS.MD5(today + secret).toString().substring(0,10).toUpperCase();
+      return key;
+    }
+
+    const key = taoKeyHangNgay();
+    document.getElementById("dailyKey").innerText = key;
+
+    function copyKey() {
+      navigator.clipboard.writeText(key).then(() => {
+        alert("✅ Key đã copy: " + key);
+      });
+    }
+  </script>
+</body>
+  </html>
